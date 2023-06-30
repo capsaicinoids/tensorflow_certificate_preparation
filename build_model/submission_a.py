@@ -1,13 +1,14 @@
-from build_model import solution_A1, solution_A2
+from build_model import solution_A1, solution_A2, solution_A3
 from typing import List, Tuple
 
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, LSTM, Bidirectional
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Flatten, LSTM, Bidirectional
+from tensorflow.keras.applications.inception_v3 import InceptionV3
 
 class AccuracyCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
-        if (logs.get('accuracy') > 0.83 and logs.get('val_accuracy') > 0.83):
-            print("\Both Accuracy is more than 83%, stopping...")
+        if (logs.get('accuracy') > 0.93 and logs.get('val_accuracy') > 0.93):
+            print("\Both Accuracy is more than 93%, stopping...")
             self.model.stop_training = True
 
 class Hyperparameters:
@@ -150,8 +151,66 @@ class SubmissionA2(Hyperparameters):
     def train_model(self):
         model = self.build_model()
         callback = AccuracyCallback()
-        X, Y = solution_A2()
+        X, Y = solution_A2(self.batch_size, self.input_shape)
         
         model.fit(X, validation_data=Y, epochs=self.epochs, callbacks=[callback])
 
         return model
+    
+class SubmissionA3(Hyperparameters):
+    def __init__(self, input_shape: Tuple[int], weights: str, include_top: bool):
+        super().__init__()
+        self.input_shape: Tuple[int] = input_shape
+        self.weights: str = weights
+        self.include_top: bool = include_top
+        
+    def build_layers(self):
+        # Initialize the base model.
+        # Set the input shape and remove the dense layers.
+        local_weights_file = solution_A3()
+        pre_trained_model = InceptionV3(
+            input_shape = self.input_shape, 
+            include_top = self.include_top, 
+            weights = self.weights
+        )
+
+        # Load the pre-trained weights we downloaded.
+        pre_trained_model.load_weights(local_weights_file)
+
+        # Freeze the weights of the layers.
+        for layer in pre_trained_model.layers:
+            layer.trainable = False
+        
+        # Choose `mixed_7` as the last layer of our base model
+        last_layer = pre_trained_model.get_layer('mixed7')
+        last_layer_output = last_layer.output
+        
+        return pre_trained_model, last_layer_output
+
+    def build_model(self):
+        pre_trained_model, last_layer_output = self.build_layers()
+
+        x = Flatten()(last_layer_output)
+        x = Dense(self.neurons[0], activation=self.activation[0])(x)
+        x = Dropout(0.2)(x)
+        x = Dense(self.neurons[1], activation=self.activation[1])(x)
+
+        model = tf.keras.Model(pre_trained_model.input, x)
+        model.compile(optimizer=self.optimizer, loss=self.loss, metrics=self.metrics)
+
+        return model
+
+    def train_model(self):
+        model = self.build_model()
+        callback = AccuracyCallback()
+        X, Y = solution_A2(self.batch_size, self.input_shape)
+        
+        model.fit(X, validation_data=Y, epochs=self.epochs, callbacks=[callback])
+
+        return model
+
+class SubmissionA4(Hyperparameters):
+    pass
+
+class SubmissionA5(Hyperparameters):
+    pass

@@ -14,7 +14,7 @@ def solution_A1():
     
     return X, Y
 
-def solution_A2():
+def solution_A2(batch_size: int, input_shape):
     # data_url_1 = 'https://github.com/dicodingacademy/assets/releases/download/release-horse-or-human/horse-or-human.zip'
     # urllib.request.urlretrieve(data_url_1, 'horse-or-human.zip')
     # local_file = 'horse-or-human.zip'
@@ -47,17 +47,25 @@ def solution_A2():
     # YOUR IMAGE SIZE SHOULD BE 150x150
     train_generator = train_datagen.flow_from_directory(
         TRAINING_DIR,
-        target_size=(150, 150),
-        batch_size=32,
+        target_size=input_shape[:-1],
+        batch_size=batch_size,
         class_mode='binary'
     )
 
     validation_generator = validation_datagen.flow_from_directory(
         VALIDATION_DIR,
-        target_size=(150, 150),
-        batch_size=32,
+        target_size=input_shape[:-1],
+        batch_size=batch_size,
         class_mode='binary'
     )
 
     return train_generator, validation_generator
 
+def solution_A3():
+    # Set the weights file we downloaded into a variable
+    inceptionv3 = 'https://storage.googleapis.com/mledu-datasets/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5'
+    urllib.request.urlretrieve(inceptionv3, 'inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5')
+    local_weights_file = 'data/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5'
+
+    return local_weights_file    
+    
