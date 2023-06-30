@@ -1,9 +1,13 @@
-import urllib.request
 import zipfile
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
+import urllib.request
 import pandas as pd
 import numpy as np
+import tensorflow_datasets as tfds
+
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+
 
 def solution_A1():
     # DO NOT CHANGE THIS CODE
@@ -67,5 +71,45 @@ def solution_A3():
     urllib.request.urlretrieve(inceptionv3, 'inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5')
     local_weights_file = 'data/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5'
 
-    return local_weights_file    
+    return local_weights_file
+
+def solution_A4(vocab_size: int, maxlen: int, trunc_type:str, oov_token: str):
+    imdb, info = tfds.load("imdb_reviews", with_info=True, as_supervised=True)
+
+    # YOUR CODE HERE!
+    train_data, test_data = imdb['train'], imdb['test'] 
+    
+    # training_sentences = [sentence.numpy().decode('utf8') for sentence, _ in train_data]
+    # testing_sentences = [sentence.numpy().decode('utf8') for sentence, _ in test_data]
+    # training_labels = np.array([label.numpy for _, label in train_data])
+    # testing_labels = np.array([label.numpy for _, label in test_data])
+
+    training_sentences = []
+    training_labels = []
+
+    testing_sentences = []
+    testing_labels = []
+
+    for s, l in train_data:
+        training_sentences.append(s.numpy().decode('utf8'))
+        training_labels.append(l.numpy())
+
+    for s, l in test_data:
+        testing_sentences.append(s.numpy().decode('utf8'))
+        testing_labels.append(l.numpy())
+
+    training_labels = np.array(training_labels)
+    testing_labels = np.array(testing_labels)        
+
+    tokenizer = Tokenizer(num_words=vocab_size, oov_token=oov_token)
+    tokenizer.fit_on_texts(training_sentences)
+
+    training_sequences = tokenizer.texts_to_sequences(training_sentences)
+    testing_sequences = tokenizer.texts_to_sequences(testing_sentences)
+
+    training_padded = pad_sequences(training_sequences, maxlen=maxlen, padding=trunc_type, truncating=trunc_type)
+    testing_padded = pad_sequences(testing_sequences, maxlen=maxlen, padding=trunc_type, truncating=trunc_type)
+
+    return training_padded, training_labels, testing_padded, testing_labels
+
     

@@ -1,14 +1,14 @@
-from build_model import solution_A1, solution_A2, solution_A3
+from build_model import solution_A1, solution_A2, solution_A3, solution_A4
 from typing import List, Tuple
 
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Flatten, LSTM, Bidirectional
+from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Flatten, Embedding, GlobalAveragePooling1D, LSTM, Bidirectional
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 
 class AccuracyCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
-        if (logs.get('accuracy') > 0.93 and logs.get('val_accuracy') > 0.93):
-            print("\Both Accuracy is more than 93%, stopping...")
+        if (logs.get('accuracy') > 0.83 and logs.get('val_accuracy') > 0.83):
+            print("\Both Accuracy is more than 83%, stopping...")
             self.model.stop_training = True
 
 class Hyperparameters:
@@ -210,7 +210,41 @@ class SubmissionA3(Hyperparameters):
         return model
 
 class SubmissionA4(Hyperparameters):
-    pass
+    VOCAB_SIZE = 10000
+    EMBEDDING_DIM = 16
+    MAX_LENGTH = 120
+    TRUNCATING = 'post'
+    OOV_TOKEN = '<OOV>'
+
+    def __init__(self):
+        super().__init__()
+
+    def build_layers(self):
+        model = tf.keras.Sequential([
+            Embedding(self.VOCAB_SIZE, self.EMBEDDING_DIM, input_length=self.MAX_LENGTH),
+            Dropout(0.2),
+            GlobalAveragePooling1D(),
+            Dropout(0.2),
+            Dense(self.neurons[0], activation=self.activation[0]),
+        ])
+
+        return model
+
+    def build_model(self):
+        model = self.build_layers()
+        model.compile(optimizer=self.optimizer, loss=self.loss, metrics=self.metrics)
+
+        return model
+
+    def train_model(self):
+        model = self.build_model()
+        callback = AccuracyCallback()
+        X_train, y_train, X_test, y_test = solution_A4(self.VOCAB_SIZE, self.MAX_LENGTH, self.TRUNCATING, self.OOV_TOKEN)
+
+        model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=self.epochs, callbacks=[callback])
+
+        return model
+        
 
 class SubmissionA5(Hyperparameters):
     pass
