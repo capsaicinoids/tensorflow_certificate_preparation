@@ -1,13 +1,24 @@
+import csv
 import zipfile
 import urllib.request
 import pandas as pd
 import numpy as np
+import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
+def windowed_dataset(series, window_size, batch_size, shuffle_buffer):
+    series = tf.expand_dims(series, axis=-1)
+    ds = tf.data.Dataset.from_tensor_slices(series)
+    ds = ds.window(window_size + 1, shift=1, drop_remainder=True)
+    ds = ds.flat_map(lambda w: w.batch(window_size + 1))
+    ds = ds.shuffle(shuffle_buffer)
+    ds = ds.map(lambda w: (w[:-1], w[1:]))
+
+    return ds.batch(batch_size).prefetch(1)
 
 def solution_A1():
     # DO NOT CHANGE THIS CODE
@@ -68,7 +79,7 @@ def solution_A2(batch_size: int, input_shape):
 def solution_A3():
     # Set the weights file we downloaded into a variable
     inceptionv3 = 'https://storage.googleapis.com/mledu-datasets/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5'
-    urllib.request.urlretrieve(inceptionv3, 'inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5')
+    urllib.request.urlretrieve(inceptionv3, 'data/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5')
     local_weights_file = 'data/inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5'
 
     return local_weights_file
@@ -112,4 +123,32 @@ def solution_A4(vocab_size: int, maxlen: int, trunc_type:str, oov_token: str):
 
     return training_padded, training_labels, testing_padded, testing_labels
 
+def solution_A5(window_size: int, batch_size: int, shuffle_buffer_size: int):
+    data_url = 'https://github.com/dicodingacademy/assets/raw/main/Simulation/machine_learning/sunspots.csv'
+    urllib.request.urlretrieve(data_url, 'data/sunspots.csv')
+
+    with open('data/sunspots.csv', 'r') as file:
+        reader = csv.reader(file, delimiter=',')
+        next(reader)
+
+        sunspots = [float(row[2]) for row in reader]
+        time_step = [int(row[0]) for row in reader]
     
+    series = np.array(sunspots)
+
+    min = np.min(series)
+    max = np.max(series)
+    series -= min
+    series /= max
+    time = np.array(time_step)
+    
+    split_time = 3000
+
+    time_train = time[:split_time]
+    x_train = series[:split_time]
+    time_valid = time[split_time:]
+    x_valid = series[split_time:]
+
+    train_set = windowed_dataset(x_train, window_size=window_size, batch_size=batch_size, shuffle_buffer=shuffle_buffer_size)
+
+    return train_set

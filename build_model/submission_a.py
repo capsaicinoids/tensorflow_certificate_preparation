@@ -1,9 +1,9 @@
-from build_model import solution_A1, solution_A2, solution_A3, solution_A4
+from build_model import solution_A1, solution_A2, solution_A3, solution_A4, solution_A5
 from typing import List, Tuple
 
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Dropout, Conv2D, MaxPool2D, Flatten, Embedding, GlobalAveragePooling1D, LSTM, Bidirectional
 from tensorflow.keras.applications.inception_v3 import InceptionV3
+from tensorflow.keras.layers import Dense, Dropout, Conv1D, Conv2D, MaxPool2D, Flatten, Embedding, GlobalAveragePooling1D, LSTM, Bidirectional
 
 class AccuracyCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs={}):
@@ -117,21 +117,21 @@ class SubmissionA1(Hyperparameters):
         return model
     
 class SubmissionA2(Hyperparameters):
-    def __init__(self, input_shape: Tuple[int], filters: Tuple[int], kernel_size: Tuple[int], activation_conv2d: str):
+    def __init__(self, input_shape: Tuple[int], filters: Tuple[int], kernel_size: Tuple[int], activation_cnn: str):
         super().__init__()
         self.input_shape: Tuple[int] = input_shape
         self.filters: Tuple[int] = filters
         self.kernel_size: Tuple[int] = kernel_size
-        self.activation_conv2d: str = activation_conv2d
+        self.activation_cnn: str = activation_cnn
 
     def build_layers(self):
         raw_cnn_layers = []
 
         for index, filter in enumerate(self.filters): 
             if index == 0:
-                raw_cnn_layers.append(Conv2D(filters=filter, kernel_size=self.kernel_size, activation=self.activation_conv2d, input_shape=self.input_shape))
+                raw_cnn_layers.append(Conv2D(filters=filter, kernel_size=self.kernel_size, activation=self.activation_cnn, input_shape=self.input_shape))
             else:
-                raw_cnn_layers.append(Conv2D(filters=filter, kernel_size=self.kernel_size, activation=self.activation_conv2d))
+                raw_cnn_layers.append(Conv2D(filters=filter, kernel_size=self.kernel_size, activation=self.activation_cnn))
             raw_cnn_layers.append(MaxPool2D(pool_size=(2, 2)))
 
         raw_cnn_layers.append(Flatten())
@@ -245,6 +245,40 @@ class SubmissionA4(Hyperparameters):
 
         return model
         
-
 class SubmissionA5(Hyperparameters):
-    pass
+    WINDOW_SIZE = 30
+    BATCH_SIZE = 32
+    SHUFFLE_BUFFER_SIZE = 1000
+
+    def __init__(self, input_shape: Tuple[int], filters: Tuple[int], kernel_size: Tuple[int], activation_cnn: str):
+        super().__init__()
+        self.input_shape: Tuple[int] = input_shape
+        self.filters: Tuple[int] = filters
+        self.kernel_size: Tuple[int] = kernel_size
+        self.activation_cnn: str = activation_cnn
+
+    def build_layers(self):
+        model = tf.keras.models.Sequential([
+            Conv1D(filters=self.filters, kernel_size=self.kernel_size, strides=1, activation=self.activation_cnn, padding='causal', input_shape=self.input_shape),
+            LSTM(64, return_sequences=True),
+            LSTM(64),
+            Dense(self.neurons[0], activation=self.activation[0]),
+            Dense(self.neurons[1], activation=self.activation[1]),
+            Dense(self.neurons[2], activation=self.activation[2])
+        ])
+
+        return model
+    
+    def build_model(self):
+        model = self.build_layers()
+        model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
+
+        return model
+
+    def train_model(self):
+        train_set = solution_A5(self.WINDOW_SIZE, self.BATCH_SIZE, self.SHUFFLE_BUFFER_SIZE)
+        model = self.build_model()
+
+        model.fit(train_set, epochs=self.epochs)
+
+        return model
